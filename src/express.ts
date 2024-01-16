@@ -2,7 +2,13 @@ import { RequestHandler, Application, Router, Express, Request, Response, NextFu
 
 import { Type } from './types'
 import { getMeta, ParameterType, ExpressClass, ParameterConfiguration, ExpressMeta } from './meta'
-import { middlewareHandler, MiddlewareFunction, Middleware, MiddlewareClass } from './middleware'
+import {
+  middlewareHandler,
+  MiddlewareFunction,
+  MiddlewareClass,
+  ErrorMiddlewareClass,
+  errorMiddlewareHandler,
+} from './middleware'
 
 /**
  * Attach controller instances to express application
@@ -11,12 +17,18 @@ export async function attachControllersInstances(app: Express | Router, controll
   const promises = controllers.map((controller) => registerController(app, controller, (c: InstanceType<Type>) => c))
 
   await Promise.all(promises)
+
+  // error middleware must be registered as the very last one
+  app.use(errorMiddlewareHandler())
 }
 
 /**
  * Attach middleware instances to express application
  */
-export function attachMiddlewareInstances(app: Express | Router, middlewares: MiddlewareClass[]) {
+export function attachMiddlewareInstances(
+  app: Express | Router,
+  middlewares: (MiddlewareClass | ErrorMiddlewareClass)[]
+) {
   for (const middleware of middlewares) {
     if (typeof middleware === 'function') {
       app.use(middleware)

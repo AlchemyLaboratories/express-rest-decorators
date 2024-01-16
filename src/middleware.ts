@@ -13,12 +13,27 @@ export interface ErrorMiddlewareClass {
 }
 export type ErrorMiddleware = ErrorMiddlewareFunction | Type<ErrorMiddlewareClass>
 
+let ERROR_MIDDLEWARE: any = undefined
+
+export function attachErrorMiddlewareInstance(middleware: ErrorMiddlewareClass) {
+  ERROR_MIDDLEWARE = middleware
+}
+
 /**
  * Create request middleware handler that uses class or function provided as middleware
  */
 export function middlewareHandler(middleware: Middleware): RequestHandler {
   return (req: Request, res: Response, next: NextFunction) => {
     invokeMiddleware(middleware, [req, res, next]).catch(next)
+  }
+}
+
+/**
+ * Add error middleware to the app
+ */
+export function errorMiddlewareHandler(): ErrorRequestHandler {
+  return (error: Error, req: Request, res: Response, next: NextFunction) => {
+    invokeMiddleware(ERROR_MIDDLEWARE, [error, req, res, next]).catch(next)
   }
 }
 

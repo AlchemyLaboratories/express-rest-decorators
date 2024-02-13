@@ -1,22 +1,11 @@
-import { Request, Response, NextFunction, RequestHandler, ErrorRequestHandler } from 'express'
-import { Type } from './types'
+import { NextFunction, Request, RequestHandler, Response } from 'express'
 
-export type MiddlewareFunction = (req: Request, res: Response, next: NextFunction) => void
-export interface MiddlewareClass {
-  use: MiddlewareFunction
+export interface Middleware {
+  use: (req: Request, res: Response, next: NextFunction) => void
 }
-export type Middleware = MiddlewareFunction | Type<MiddlewareClass>
 
-export type ErrorMiddlewareFunction = (error: Error, request: Request, response: Response, next: NextFunction) => void
-export interface ErrorMiddlewareClass {
-  use: ErrorMiddlewareFunction
-}
-export type ErrorMiddleware = ErrorMiddlewareFunction | Type<ErrorMiddlewareClass>
-
-let ERROR_MIDDLEWARE: any = undefined
-
-export function attachErrorMiddlewareInstance(middleware: ErrorMiddlewareClass) {
-  ERROR_MIDDLEWARE = middleware
+export interface ErrorMiddleware {
+  use: (error: Error, request: Request, response: Response, next: NextFunction) => void
 }
 
 /**
@@ -29,44 +18,22 @@ export function middlewareHandler(middleware: Middleware): RequestHandler {
 }
 
 /**
- * Add error middleware to the app
- */
-export function errorMiddlewareHandler(): ErrorRequestHandler {
-  return (error: Error, req: Request, res: Response, next: NextFunction) => {
-    invokeMiddleware(ERROR_MIDDLEWARE, [error, req, res, next]).catch(next)
-  }
-}
-
-/**
  * Instantiate middleware and invoke it with arguments
  */
 async function invokeMiddleware(
   middleware: Middleware | ErrorMiddleware,
-  args: Parameters<MiddlewareFunction> | Parameters<ErrorMiddlewareFunction>
+  args: Parameters<Middleware['use']> | Parameters<ErrorMiddleware['use']>
 ) {
   const next = args[args.length - 1] as NextFunction
 
   try {
-    const instance = await getMiddlewareInstance(middleware)
-
-    if (!instance) {
+    if (!middleware) {
       return next()
     }
 
-    const handler = (instance as MiddlewareClass | ErrorMiddlewareClass)?.use ?? instance
     // @ts-ignore
-    const result = typeof handler === 'function' ? handler.apply(instance, args) : instance
-
-    if (result instanceof Promise) {
-      result.catch(next)
-    }
+    middleware.use.apply(args)
   } catch (err) {
     next(err)
-  }
-}
-
-async function getMiddlewareInstance(middleware: Middleware | ErrorMiddleware) {
-  if (typeof middleware === 'function') {
-    return middleware.prototype?.use ? new (middleware as Type<MiddlewareClass | ErrorMiddlewareClass>)() : middleware
   }
 }

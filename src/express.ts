@@ -2,39 +2,22 @@ import { RequestHandler, Application, Router, Express, Request, Response, NextFu
 
 import { Type } from './types'
 import { getMeta, ParameterType, ExpressClass, ParameterConfiguration, ExpressMeta } from './meta'
-import {
-  middlewareHandler,
-  MiddlewareFunction,
-  MiddlewareClass,
-  ErrorMiddlewareClass,
-  errorMiddlewareHandler,
-} from './middleware'
+import { middlewareHandler, Middleware, ErrorMiddleware } from './middleware'
 
 /**
  * Attach controller instances to express application
  */
 export async function attachControllersInstances(app: Express | Router, controllers: InstanceType<Type>[]) {
   const promises = controllers.map((controller) => registerController(app, controller, (c: InstanceType<Type>) => c))
-
   await Promise.all(promises)
-
-  // error middleware must be registered as the very last one
-  app.use(errorMiddlewareHandler())
 }
 
 /**
  * Attach middleware instances to express application
  */
-export function attachMiddlewareInstances(
-  app: Express | Router,
-  middlewares: (MiddlewareClass | ErrorMiddlewareClass)[]
-) {
+export function attachMiddlewareInstances(app: Express | Router, middlewares: (Middleware | ErrorMiddleware)[]) {
   for (const middleware of middlewares) {
-    if (typeof middleware === 'function') {
-      app.use(middleware)
-    } else {
-      app.use(middleware.use)
-    }
+    app.use(middleware.use)
   }
 }
 
@@ -174,7 +157,7 @@ function getParam(source: any, paramType?: string, name?: string): any {
  * @remarks
  * Please use custom decorators before express method decorators Get, Post, etc...
  */
-export function attachMiddleware(target: any, property: string | undefined, middleware: MiddlewareFunction) {
+export function attachMiddleware(target: any, property: string | undefined, middleware: Middleware) {
   const targetClass: ExpressClass = typeof target === 'function' ? target.prototype : target
   const meta: ExpressMeta = getMeta(targetClass)
   if (meta.url !== '') {

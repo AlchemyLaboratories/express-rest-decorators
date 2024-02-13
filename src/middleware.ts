@@ -32,7 +32,7 @@ async function invokeMiddleware(
     }
 
     // @ts-ignore
-    middleware.use.apply(args)
+    middleware.use.apply(middleware, args)
   } catch (err) {
     next(err)
   }
